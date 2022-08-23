@@ -8,6 +8,7 @@ package watcher
 
 import (
 	"fmt"
+	iofs "io/fs"
 	"os"
 	"os/exec"
 	"regexp"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-zoox/debounce"
+	"github.com/go-zoox/fs"
 	"github.com/go-zoox/logger"
 )
 
@@ -56,8 +58,17 @@ func (w *watcher) Watch() error {
 	for _, path := range paths {
 		logger.Info("[watch] watching path: %s ...", path)
 
-		if err := watcher.Add(path); err != nil {
-			return fmt.Errorf("failed to watch directory: %s (err: %s)", path, err)
+		err := fs.WalkDir(path, func(path string, d iofs.DirEntry, err error) error {
+			if d.IsDir() {
+				if err := watcher.Add(path); err != nil {
+					return fmt.Errorf("failed to watch directory: %s (err: %s)", path, err)
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("failed to walk dir: %v", err)
 		}
 	}
 
