@@ -65,8 +65,9 @@ github.com/go-zoox/fetch v1.4.4/go.mod h1:WExVnds3HZ1A6jJu9KuqtICfkJpvUdR4uONUnw
 github.com/go-zoox/fetch v1.4.7 h1:rFEzVHzpIxkHpV0zpBpbTYDRGCm8nWCBgcuN4sqGZK8=
 github.com/go-zoox/fetch v1.4.7/go.mod h1:WExVnds3HZ1A6jJu9KuqtICfkJpvUdR4uONUnw9TG+0=
 github.com/go-zoox/fs v1.2.4/go.mod h1:aywpClMqf6YO8+QnuwC3p3EvFWe88h0tWH65rpxtY00=
-github.com/go-zoox/fs v1.2.5 h1:OQGercbeDUZfDjgbN1fz18oPd3f/ii3XKxH4XZlfhi0=
 github.com/go-zoox/fs v1.2.5/go.mod h1:aywpClMqf6YO8+QnuwC3p3EvFWe88h0tWH65rpxtY00=
+github.com/go-zoox/fs v1.3.0 h1:ATMubmupuEEaXkGP2ku2wZLUtwQuySN7UvHK6UCpVQ8=
+github.com/go-zoox/fs v1.3.0/go.mod h1:sgsPVM/A1IAmUAhO/yyCAAKnkV6qSxToAj5G1gh4Tq8=
 github.com/go-zoox/gzip v1.0.0 h1:11ZTgxAPgexmZ/NJaEEuN2FDCJuvg9sips+XDR+48Yw=
 github.com/go-zoox/gzip v1.0.0/go.mod h1:7g9vTpKek1dft1Yi1Ryi4A6dq9snMgq94Qq8wSte8L0=
 github.com/go-zoox/ini v1.0.4/go.mod h1:SisQneNLb1EBeZ5bA5GnrJd8FNg372hQrPh+gb3IzV4=

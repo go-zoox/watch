@@ -7,8 +7,8 @@ package watcher
 //	https://drailing.net/2018/01/debounce-function-for-golang/
 
 import (
+	"context"
 	"fmt"
-	iofs "io/fs"
 	"os"
 	"os/exec"
 	"regexp"
@@ -16,7 +16,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/go-zoox/debounce"
 	"github.com/go-zoox/fs"
 	"github.com/go-zoox/logger"
@@ -48,71 +47,43 @@ func New(cfg *Config) Watcher {
 
 func (w *watcher) Watch() error {
 	paths := append(w.cfg.Paths, w.cfg.Context)
-
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return fmt.Errorf("failed to create watcher: %s", err)
-	}
 	runner := createRunner(w.cfg.Commands, w.cfg.Context)
-
-	for _, path := range paths {
-		logger.Info("[watch] watching path: %s ...", path)
-
-		err := fs.WalkDir(path, func(path string, d iofs.DirEntry, err error) error {
-			if d.IsDir() {
-				if err := watcher.Add(path); err != nil {
-					return fmt.Errorf("failed to watch directory: %s (err: %s)", path, err)
-				}
-			}
-
-			return nil
-		})
-		if err != nil {
-			return fmt.Errorf("failed to walk dir: %v", err)
-		}
-	}
 
 	if err := runner(); err != nil {
 		logger.Error("[watch] failed to run runner: %s", err)
 	}
 
-	for {
-		select {
-		case e := <-watcher.Events:
-			if e.Op == fsnotify.Chmod {
-				continue
-			}
-
-			ignored := false
-			for _, ignore := range w.cfg.Ignores {
-				if ok, err := regexp.MatchString(ignore, e.Name); err != nil {
-					return fmt.Errorf("failed to match ignore: %s (err: %s)", ignore, err)
-				} else if ok {
-					ignored = true
-					break
-				}
-			}
-			if ignored {
-				continue
-			}
-
-			// logger.Info("[watch] file change: %s (%s)", e.Name, e.Op.String())
-			if err := runner(); err != nil {
-				logger.Error("[watch] failed to run runner: %s", err)
-			}
-
-		case err := <-watcher.Errors:
+	err := fs.WatchDir(context.Background(), paths, func(err error, event, filepath string) {
+		if err != nil {
 			logger.Error("[watch] error: %s", err)
-
-		case <-w.stop:
-			logger.Info("[watch] stopping ...")
-			if err := watcher.Close(); err != nil {
-				logger.Error("[watch] failed to close watcher: %s", err)
-			}
-
-			return nil
+			return
 		}
+
+		ignored := false
+		for _, ignore := range w.cfg.Ignores {
+			if ok, err := regexp.MatchString(ignore, filepath); err != nil {
+				logger.Error("failed to match ignore: %s (err: %s)", ignore, err)
+				return
+			} else if ok {
+				ignored = true
+				break
+			}
+		}
+		if ignored {
+			return
+		}
+
+		// logger.Info("[watch] file change: %s (%s)", e.Name, e.Op.String())
+		if err := runner(); err != nil {
+			logger.Error("[watch] failed to run runner: %s", err)
+		}
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create watcher: %s", err)
 	}
+
+	logger.Info("[watch] stopping ...")
+	return nil
 }
 
 func (w *watcher) Stop() error {
