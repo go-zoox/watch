@@ -5,7 +5,7 @@ import (
 	"path"
 
 	"github.com/go-zoox/logger"
-	"github.com/go-zoox/watcher"
+	watch "github.com/go-zoox/watch"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 	// 	},
 	// })
 
-	watcher := watcher.New(&watcher.Config{
+	watcher := watch.New(&watch.Config{
 		Context: path.Join(pwd, "example/node"),
 		Ignores: []string{},
 		Commands: []string{

@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/go-zoox/watcher/example/go/config"
+	"github.com/go-zoox/watch/example/go/config"
 	"github.com/go-zoox/zoox"
 	zd "github.com/go-zoox/zoox/default"
 )

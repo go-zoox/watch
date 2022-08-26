@@ -1,4 +1,4 @@
-package watcher
+package watch
 
 // references:
 //	https://studygolang.com/articles/34169
@@ -9,12 +9,14 @@ package watcher
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 
 	"github.com/go-zoox/fs"
 	"github.com/go-zoox/logger"
-	"github.com/go-zoox/watcher/process"
+	"github.com/go-zoox/watch/process"
 )
 
 type Watcher interface {
@@ -33,8 +35,8 @@ type Config struct {
 	Ignores  []string
 	Commands []string
 	Env      map[string]string
-	//
-
+	// go | golang
+	Mode string
 }
 
 func New(cfg *Config) Watcher {
@@ -46,6 +48,10 @@ func New(cfg *Config) Watcher {
 		}))
 	}
 
+	if cfg.Mode == "" {
+		cfg.Mode = "gpm"
+	}
+
 	return &watcher{
 		cfg:       cfg,
 		processes: processes,
@@ -53,6 +59,10 @@ func New(cfg *Config) Watcher {
 }
 
 func (w *watcher) Watch() error {
+	if w.cfg.Mode == "gpm" {
+		return w.watchGpm()
+	}
+
 	paths := append(w.cfg.Paths, w.cfg.Context)
 
 	go func() {
@@ -130,4 +140,12 @@ func (w *watcher) Stop() error {
 	}
 
 	return nil
+}
+
+func (w *watcher) watchGpm() error {
+	cmd := exec.Command("gpm", "watch", "--exec", "go run .")
+	cmd.Dir = w.cfg.Context
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
