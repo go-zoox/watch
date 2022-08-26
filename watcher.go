@@ -9,16 +9,12 @@ package watcher
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
 	"regexp"
 	"strings"
-	"syscall"
-	"time"
 
-	"github.com/go-zoox/debounce"
 	"github.com/go-zoox/fs"
 	"github.com/go-zoox/logger"
+	"github.com/go-zoox/watcher/process"
 )
 
 type Watcher interface {
@@ -27,8 +23,8 @@ type Watcher interface {
 }
 
 type watcher struct {
-	cfg  *Config
-	stop chan int
+	cfg       *Config
+	processes []process.Process
 }
 
 type Config struct {
@@ -36,22 +32,42 @@ type Config struct {
 	Paths    []string
 	Ignores  []string
 	Commands []string
+	Env      map[string]string
+	//
+
 }
 
 func New(cfg *Config) Watcher {
+	processes := []process.Process{}
+	for _, command := range cfg.Commands {
+		processes = append(processes, process.New(command, &process.Options{
+			Context:     cfg.Context,
+			Environment: cfg.Env,
+		}))
+	}
+
 	return &watcher{
-		cfg:  cfg,
-		stop: make(chan int),
+		cfg:       cfg,
+		processes: processes,
 	}
 }
 
 func (w *watcher) Watch() error {
 	paths := append(w.cfg.Paths, w.cfg.Context)
-	runner := createRunner(w.cfg.Commands, w.cfg.Context)
 
-	if err := runner(); err != nil {
-		logger.Error("[watch] failed to run runner: %s", err)
-	}
+	go func() {
+		fmt.Printf(`#################
+#  Watcher Start #
+#################
+# Command: %s
+# Context: %s
+#################
+
+`, w.cfg.Commands, w.cfg.Context)
+		if err := w.run(); err != nil {
+			logger.Error("failed to run processes: %s", err)
+		}
+	}()
 
 	err := fs.WatchDir(context.Background(), paths, func(err error, event, filepath string) {
 		if err != nil {
@@ -73,9 +89,9 @@ func (w *watcher) Watch() error {
 			return
 		}
 
-		// logger.Info("[watch] file change: %s (%s)", e.Name, e.Op.String())
-		if err := runner(); err != nil {
-			logger.Error("[watch] failed to run runner: %s", err)
+		logger.Info("[watch] file changes, restart processes: %s", strings.Join(w.cfg.Commands, ", "))
+		if err := w.restart(); err != nil {
+			logger.Error("[watch] failed to restart processes: %s", err)
 		}
 	})
 	if err != nil {
@@ -86,49 +102,32 @@ func (w *watcher) Watch() error {
 	return nil
 }
 
-func (w *watcher) Stop() error {
-	w.stop <- 1
+func (w *watcher) run() error {
+	for _, p := range w.processes {
+		if err := p.Start(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-func createRunner(commands []string, context string) func() error {
-	cancels := make([]func() error, 0)
-
-	return debounce.New(func() {
-		logger.Info("[watch] file changing, exec `%s`", strings.Join(commands, ", "))
-
-		for _, cancel := range cancels {
-			if err := cancel(); err != nil {
-				logger.Error("[watch] failed to cancel command: %s (err: %s)", cancel, err)
-			}
+func (w *watcher) restart() error {
+	for _, p := range w.processes {
+		if err := p.Restart(); err != nil {
+			return err
 		}
+	}
 
-		// reset cancels
-		cancels = make([]func() error, 0)
-		for _, cmd := range commands {
-			cancels = append(cancels, execCommand(cmd, context))
-		}
-	}, 300*time.Millisecond)
+	return nil
 }
 
-func execCommand(command string, context string) func() error {
-	logger.Info("[watch] running command: %s ...", command)
-	cmd := exec.Command("/bin/sh", "-c", command)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Dir = context
-
-	go func() {
-		if err := cmd.Run(); err != nil {
-			logger.Error("[watch] failed to run command: %s (err: %s)", command, err)
+func (w *watcher) Stop() error {
+	for _, p := range w.processes {
+		if err := p.Stop(); err != nil {
+			return err
 		}
-	}()
-
-	return func() error {
-		if cmd != nil && cmd.ProcessState != nil && cmd.ProcessState.Exited() {
-			return nil
-		}
-
-		return cmd.Process.Signal(syscall.SIGTERM)
 	}
+
+	return nil
 }

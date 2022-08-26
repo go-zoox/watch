@@ -3,7 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/go-zoox/watcher/example/program/config"
+	"github.com/go-zoox/watcher/example/go/config"
+	"github.com/go-zoox/zoox"
 	zd "github.com/go-zoox/zoox/default"
 )
 
@@ -13,6 +14,10 @@ func main() {
 	}
 
 	r := zd.Default()
+
+	r.Get("/hi", func(ctx *zoox.Context) {
+		ctx.String(200, "hello world 2222")
+	})
 
 	r.Run(":10080")
 }
