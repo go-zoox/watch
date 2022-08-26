@@ -143,7 +143,7 @@ func (w *watcher) Stop() error {
 }
 
 func (w *watcher) watchGpm() error {
-	cmd := exec.Command("gpm", "watch", "--exec", "go run .")
+	cmd := exec.Command("gpm", "watch", "--exec", w.cfg.Commands[0])
 	cmd.Dir = w.cfg.Context
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
