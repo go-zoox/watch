@@ -60,7 +60,12 @@ func New(cfg *Config) Watcher {
 
 func (w *watcher) Watch() error {
 	if w.cfg.Mode == "gpm" {
-		return w.watchGpm()
+		err := w.watchGpm()
+		if err != nil {
+			logger.Error("watch gpm error: %s", err)
+		}
+
+		return err
 	}
 
 	paths := append(w.cfg.Paths, w.cfg.Context)
@@ -143,6 +148,10 @@ func (w *watcher) Stop() error {
 }
 
 func (w *watcher) watchGpm() error {
+	if err := exec.Command("which", "gpm").Run(); err != nil {
+		return fmt.Errorf("gpm is not installed, you can install it by `npm i -g @cliz/gpm`")
+	}
+
 	cmd := exec.Command("gpm", "watch", "--exec", w.cfg.Commands[0])
 	cmd.Dir = w.cfg.Context
 	cmd.Stdout = os.Stdout
