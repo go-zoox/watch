@@ -48,9 +48,9 @@ func New(cfg *Config) Watcher {
 		}))
 	}
 
-	if cfg.Mode == "" {
-		cfg.Mode = "gpm"
-	}
+	// if cfg.Mode == "" {
+	// 	cfg.Mode = "gpm"
+	// }
 
 	return &watcher{
 		cfg:       cfg,
