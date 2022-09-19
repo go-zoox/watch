@@ -16,7 +16,7 @@ func main() {
 	r := zd.Default()
 
 	r.Get("/hi", func(ctx *zoox.Context) {
-		ctx.String(200, "hello world 2222")
+		ctx.String(200, "hello world 888")
 	})
 
 	r.Run(":10080")
