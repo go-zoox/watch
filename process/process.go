@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/go-zoox/logger"
@@ -130,6 +131,9 @@ func (p *process) run() error {
 	// cmd := exec.Command("/bin/sh", "-c", p.command)
 	// cmd.Stdout = os.Stdout
 	// cmd.Stderr = os.Stderr
+	//
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	//
 	cmd.Dir = p.context
 	cmd.Env = environment
 
@@ -182,8 +186,13 @@ func (p *process) kill() error {
 
 		time.Sleep(100 * time.Millisecond)
 
-		// https://stackoverflow.com/questions/22470193/why-wont-go-kill-a-child-process-correctly
-		if err := cmd.Process.Kill(); err != nil {
+		// // https://stackoverflow.com/questions/22470193/why-wont-go-kill-a-child-process-correctly
+		// if err := cmd.Process.Kill(); err != nil {
+		// 	return fmt.Errorf("failed to kill process: %s", err)
+		// }
+
+		// https://medium.com/@felixge/killing-a-child-process-and-all-of-its-children-in-go-54079af94773
+		if err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); err != nil {
 			return fmt.Errorf("failed to kill process: %s", err)
 		}
 
