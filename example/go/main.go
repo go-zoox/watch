@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-zoox/watch/example/go/config"
 	"github.com/go-zoox/zoox"
-	zd "github.com/go-zoox/zoox/default"
+	zd "github.com/go-zoox/zoox/defaults"
 )
 
 func main() {

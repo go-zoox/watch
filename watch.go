@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"strings"
 
 	"github.com/go-zoox/fs"
 	"github.com/go-zoox/logger"
@@ -71,7 +70,9 @@ func (w *watcher) Watch() error {
 	paths := append(w.cfg.Paths, w.cfg.Context)
 
 	go func() {
-		fmt.Printf(`#################
+		logger.Infof("[watch] start watching ...")
+
+		logger.Debugf(`#################
 #  Watcher Start #
 #################
 # Command: %s
@@ -104,7 +105,7 @@ func (w *watcher) Watch() error {
 			return
 		}
 
-		logger.Info("[watch] file changes, restart processes: %s", strings.Join(w.cfg.Commands, ", "))
+		logger.Infof("[watch] file changes, restart processes ...")
 		if err := w.restart(); err != nil {
 			logger.Error("[watch] failed to restart processes: %s", err)
 		}
