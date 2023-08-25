@@ -70,6 +70,8 @@ func (w *watcher) Watch() error {
 
 	paths := append(w.cfg.Paths, w.cfg.Context)
 
+	fmt.Println("paths:", paths)
+
 	go func() {
 		fmt.Printf(`#################
 #  Watcher Start #
