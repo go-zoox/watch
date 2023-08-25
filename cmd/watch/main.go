@@ -10,9 +10,9 @@ func main() {
 	app := cli.NewSingleProgram(&cli.SingleProgramConfig{
 		Name:    "watch",
 		Usage:   "The command watcher",
-		Version: "0.0.1",
+		Version: watch.Version,
 		Flags: []cli.Flag{
-			&cli.StringFlag{
+			&cli.StringSliceFlag{
 				Name:     "command",
 				Usage:    "the command",
 				Aliases:  []string{"c"},
@@ -23,15 +23,18 @@ func main() {
 				Usage: "the command context",
 				Value: fs.CurrentDir(),
 			},
+			&cli.StringSliceFlag{
+				Name:  "ignore",
+				Usage: "the ignored files",
+			},
 		},
 	})
 
 	app.Command(func(ctx *cli.Context) error {
 		watcher := watch.New(&watch.Config{
-			Context: ctx.String("context"),
-			Commands: []string{
-				ctx.String("command"),
-			},
+			Context:  ctx.String("context"),
+			Commands: ctx.StringSlice("command"),
+			Ignores:  ctx.StringSlice("ignore"),
 		})
 
 		return watcher.Watch()

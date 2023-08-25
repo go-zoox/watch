@@ -29,10 +29,10 @@ type watcher struct {
 }
 
 type Config struct {
+	Commands []string
 	Context  string
 	Paths    []string
 	Ignores  []string
-	Commands []string
 	Env      map[string]string
 	// go | golang
 	Mode string
@@ -68,8 +68,6 @@ func (w *watcher) Watch() error {
 	}
 
 	paths := append(w.cfg.Paths, w.cfg.Context)
-
-	fmt.Println("paths:", paths)
 
 	go func() {
 		logger.Infof("[watch] start watching ...")
