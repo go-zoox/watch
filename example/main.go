@@ -11,10 +11,10 @@ import (
 func main() {
 	pwd, _ := os.Getwd()
 	watcher := watch.New(&watch.Config{
-		Context: path.Join(pwd, "example/go"),
+		Context: path.Join(pwd),
 		Ignores: []string{},
 		Commands: []string{
-			"go run .",
+			"cd example/go && go run .",
 			// "go build -o /tmp/example && /tmp/example",
 		},
 	})

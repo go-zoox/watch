@@ -51,6 +51,8 @@ func New(cfg *Config) Watcher {
 	// 	cfg.Mode = "gpm"
 	// }
 
+	cfg.Ignores = append(cfg.Ignores, fs.JoinPath(cfg.Context, ".git"))
+
 	return &watcher{
 		cfg:       cfg,
 		processes: processes,
@@ -105,7 +107,7 @@ func (w *watcher) Watch() error {
 			return
 		}
 
-		logger.Infof("[watch] file changes, restart processes ...")
+		logger.Infof("[watch] file changes, restart processes (event: %s) ...", event)
 		if err := w.restart(); err != nil {
 			logger.Error("[watch] failed to restart processes: %s", err)
 		}
