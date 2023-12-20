@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"strings"
 	"syscall"
 	"time"
 
@@ -126,8 +125,7 @@ func (p *process) run() error {
 		environment = append(environment, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	args := strings.Split(p.command, " ")
-	cmd := exec.Command(args[0], args[1:]...)
+	cmd := exec.Command("sh", "-c", p.command)
 	// cmd := exec.Command("/bin/sh", "-c", p.command)
 	// cmd.Stdout = os.Stdout
 	// cmd.Stderr = os.Stderr

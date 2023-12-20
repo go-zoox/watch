@@ -29,10 +29,10 @@ type watcher struct {
 }
 
 type Config struct {
+	Commands []string
 	Context  string
 	Paths    []string
 	Ignores  []string
-	Commands []string
 	Env      map[string]string
 	// go | golang
 	Mode string
