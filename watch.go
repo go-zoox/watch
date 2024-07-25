@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"regexp"
 
+	"github.com/go-zoox/core-utils/array"
 	"github.com/go-zoox/fs"
 	"github.com/go-zoox/logger"
 	"github.com/go-zoox/watch/process"
@@ -33,6 +34,7 @@ type Config struct {
 	Context  string
 	Paths    []string
 	Ignores  []string
+	Exts     []string
 	Env      map[string]string
 	// go | golang
 	Mode string
@@ -83,7 +85,7 @@ func (w *watcher) Watch() error {
 
 `, w.cfg.Commands, w.cfg.Context)
 		if err := w.run(); err != nil {
-			logger.Error("failed to run processes: %s", err)
+			logger.Errorf("failed to run processes: %s", err)
 		}
 	}()
 
@@ -96,7 +98,7 @@ func (w *watcher) Watch() error {
 		ignored := false
 		for _, ignore := range w.cfg.Ignores {
 			if ok, err := regexp.MatchString(ignore, filepath); err != nil {
-				logger.Error("failed to match ignore: %s (err: %s)", ignore, err)
+				logger.Errorf("failed to match ignore: %s (err: %s)", ignore, err)
 				return
 			} else if ok {
 				ignored = true
@@ -107,16 +109,27 @@ func (w *watcher) Watch() error {
 			return
 		}
 
+		// check ext, if not match anyone, ignore
+		if len(w.cfg.Exts) > 0 {
+			vExt := fs.ExtName(filepath)
+			ok := array.Some(w.cfg.Exts, func(element string, index int) bool {
+				return element == vExt
+			})
+			if !ok {
+				return
+			}
+		}
+
 		logger.Infof("[watch] file changes, restart processes (event: %s) ...", event)
 		if err := w.restart(); err != nil {
-			logger.Error("[watch] failed to restart processes: %s", err)
+			logger.Errorf("[watch] failed to restart processes: %s", err)
 		}
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create watcher: %s", err)
 	}
 
-	logger.Info("[watch] stopping ...")
+	logger.Infof("[watch] stopping ...")
 	return nil
 }
 

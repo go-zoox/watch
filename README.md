@@ -30,6 +30,7 @@ func main(t *testing.T) {
 	watcher := watcher.New(&watcher.Config{
 		Context: path.Join(pwd, "example/program"),
 		Ignores: []string{},
+		Exts: []string{".go", ".mod", ".sum"},
 		Commands: []string{
 			"go run .",
 		},
