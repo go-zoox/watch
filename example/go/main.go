@@ -2,10 +2,9 @@ package main
 
 import (
 	"log"
+	"net/http"
 
 	"github.com/go-zoox/watch/example/go/config"
-	"github.com/go-zoox/zoox"
-	zd "github.com/go-zoox/zoox/defaults"
 )
 
 func main() {
@@ -13,11 +12,11 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	r := zd.Default()
-
-	r.Get("/hi", func(ctx *zoox.Context) {
-		ctx.String(200, "hello world 888")
+	http.HandleFunc("/hi", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("hello world 888"))
 	})
 
-	r.Run(":10080")
+	log.Fatal(http.ListenAndServe(":10080", nil))
 }

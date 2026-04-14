@@ -1,12 +1,12 @@
 package process
 
 import (
+	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
+	"sync"
 	"syscall"
-	"time"
 
 	"github.com/go-zoox/logger"
 )
@@ -28,6 +28,7 @@ type process struct {
 	//
 	isStarted bool
 	cmd       *exec.Cmd
+	mu        sync.Mutex
 }
 
 type Options struct {
@@ -92,6 +93,8 @@ func (p *process) routine() {
 		select {
 		case <-p.stop:
 			go func() {
+				p.mu.Lock()
+				defer p.mu.Unlock()
 				if err := p.kill(); err != nil {
 					logger.Error("[process] kill error: %s", err)
 				}
@@ -100,6 +103,8 @@ func (p *process) routine() {
 
 		case <-p.restart:
 			go func() {
+				p.mu.Lock()
+				defer p.mu.Unlock()
 				if err := p.kill(); err != nil {
 					logger.Error("[process] kill error: %s", err)
 				}
@@ -111,6 +116,8 @@ func (p *process) routine() {
 
 		case <-p.start:
 			go func() {
+				p.mu.Lock()
+				defer p.mu.Unlock()
 				if err := p.run(); err != nil {
 					logger.Error("[process] failed to start process (1): %s", err)
 				}
@@ -134,78 +141,42 @@ func (p *process) run() error {
 	//
 	cmd.Dir = p.context
 	cmd.Env = environment
+	// Attach stdio directly so cmd.Wait() in kill() is not blocked waiting for
+	// pipe-draining goroutines (which can deadlock under test output capture).
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	p.cmd = cmd
-
-	// go func() {
-	// 	time.Sleep(time.Second)
-	// 	fmt.Println("[process] run:", p.command, cmd.Process.Pid)
-	// }()
-
-	// return cmd.Run()
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-
-	go io.Copy(os.Stdout, stdout)
-	go io.Copy(os.Stderr, stderr)
-
-	// // wait release any resources associated with the Cmd
-	// go func() {
-	// 	time.Sleep(100 * time.Millisecond)
-
-	// 	if err := cmd.Wait(); err != nil {
-	// 		logger.Error("wait child process exit error: %s (pid: %d)", err, cmd.Process.Pid)
-	// 	}
-	// }()
 
 	return cmd.Start()
 }
 
 func (p *process) kill() error {
 	cmd := p.cmd
-
-	// fmt.Println("[process] kill:", cmd.Process.Pid)
-
-	if cmd != nil {
-		// wait release any resources associated with the Cmd
-		// go func() {
-		// 	if err := cmd.Wait(); err != nil {
-		// 		logger.Error("wait child process exit error: %s (pid: %d)", err, cmd.Process.Pid)
-		// 	}
-		// }()
-
-		time.Sleep(100 * time.Millisecond)
-
-		// // https://stackoverflow.com/questions/22470193/why-wont-go-kill-a-child-process-correctly
-		// if err := cmd.Process.Kill(); err != nil {
-		// 	return fmt.Errorf("failed to kill process: %s", err)
-		// }
-
-		// https://medium.com/@felixge/killing-a-child-process-and-all-of-its-children-in-go-54079af94773
-		if err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); err != nil {
-			return fmt.Errorf("failed to kill process: %s", err)
-		}
-
-		// p, err := ps.NewProcess(int32(cmd.Process.Pid))
-		// if err != nil {
-		// 	return fmt.Errorf("failed to find process when kill: %s", err)
-		// }
-		// if err := p.Kill(); err != nil {
-		// 	return fmt.Errorf("failed to kill process: %s", err)
-		// }
+	if cmd == nil {
+		return nil
 	}
 
-	// fmt.Println("[process] kill done:", p.command, p.cmd.ProcessState)
+	if cmd.Process == nil {
+		p.cmd = nil
+		return nil
+	}
 
-	time.Sleep(100 * time.Millisecond)
+	pid := cmd.Process.Pid
 
+	// Kill the whole process group (shell + children, e.g. the server holding the port).
+	// https://medium.com/@felixge/killing-a-child-process-and-all-of-its-children-in-go-54079af94773
+	if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil && !errors.Is(err, syscall.ESRCH) {
+		return fmt.Errorf("failed to kill process: %w", err)
+	}
+
+	// Wait until the process exits and is reaped; otherwise the next start can race
+	// the old listener and hit "address already in use".
+	if err := cmd.Wait(); err != nil {
+		// Non-zero exit or signal after SIGKILL is expected.
+		logger.Debugf("[process] wait after kill (pid %d): %s", pid, err)
+	}
+
+	p.cmd = nil
 	return nil
 }
